@@ -1,58 +1,19 @@
 #![allow(dead_code, unused)]
 
-use rand::{thread_rng, Rng};
-use std::{array, mem::size_of, error::Error, collections::hash_map::*};
+use std::{array, mem::size_of, error::Error, collections::hash_map::*, cell::*, rc::*};
 
 use sfml::{graphics::*, system::*, window::*};
 use ghost_cell::{GhostToken, GhostCell, self};
 
-#[derive(Default, Clone, Copy)]
-struct Id<T> {
-    id: usize,
-    _marker: std::marker::PhantomData<T>
+mod id;
+
+use id::Id;
+
+struct State {
+    pins: Rc<RefCell<HashMap<usize, Pin>>>,
+    edges: Rc<RefCell<HashMap<usize, Edge>>>,
+    gates: Rc<RefCell<HashMap<usize, Gate>>>
 }
-
-impl<T> Id<T> {
-    fn new() -> Self {
-        Id {
-            id: thread_rng().gen_range(0..usize::MAX),
-            _marker: std::marker::PhantomData
-        }
-    }
-
-    fn get<'a>(&self, map: &'a HashMap<usize, T>) -> Option<&'a T> {
-        map.get(&self.id)
-    }
-
-    fn get_mut<'a>(&self, map: &'a mut HashMap<usize, T>) -> Option<&'a mut T> {
-        map.get_mut(&self.id)
-    }
-}
-
-trait HashId<T> {
-    fn get(&self, id: Id<T>) -> Option<&T>;
-    fn get_mut(&mut self, id: Id<T>) -> Option<&mut T>;
-    fn insert(&mut self, value: T) -> Id<T>;
-}
-
-impl<T> HashId<T> for HashMap<usize, T> {
-    fn get(&self, id: Id<T>) -> Option<&T> {
-       self.get(&id.id) 
-    }
-
-    fn get_mut(&mut self, id: Id<T>) -> Option<&mut T> {
-        self.get_mut(&id.id)
-    }
-
-    fn insert(&mut self, value: T) -> Id<T> {
-        let new_id = Id::new();
-
-        self.insert(new_id.id, value);
-
-        new_id
-    }
-}
-
 
 #[derive(Default)]
 struct Pin {
@@ -66,10 +27,10 @@ impl Pin {
         Pin { ..Default::default() }
     }
 
-    fn create(pins: &'x mut Vec<Pin<'x>>) -> PinRef<'x> {
-        GhostCell::from_mut(
-            pins.push_last( Pin::new() )
-        )
+    fn create(state: &mut State) -> Id<Self> {
+        let id = Id::create(&state.pins, Self::new());
+
+        id
     }
 }
 
@@ -78,32 +39,77 @@ struct Edge {
     to: Id<Pin>
 }
 
-struct Gate<'x> {
-    inputs: [ PinRef<'x>; 2 ],
-    output: PinRef<'x>,
-    op: Box<dyn Fn(bool, bool) -> bool>
+impl Edge {
+    fn new(from: Id<Pin>, to: Id<Pin>) -> Self {
+        Edge { from, to }
+    }
+
+    fn create(state: &mut State, from: Id<Pin>, to: Id<Pin>) -> Id<Self> {
+        let id = Id::create(&state.edges, Self::new(from, to));
+
+        id
+    }
+
+    /* fn draw<'a: 'shader, 'texture, 'shader, 'shader_texture>(&'a self, state: &State, target: &mut dyn RenderTarget, states: &RenderStates<'texture, 'shader, 'shader_texture>) {
+        let shape = VertexArray::new(PrimitiveType::LINE_STRIP, 2);
+
+        shape[0].position = 
+    } */
 }
 
-impl<'x> Gate<'x> {
-    // fn new(graph: &mut GhostToken<'x>, pins: &'x mut Vec<Pin<'x>>) -> Self {
-    //     let input1 = Pin::create(pins);
-    //     let input2 = Pin::create(pins);
-    //     let output = Pin::create(pins);
+struct Gate {
+    inputs: [ Id<Pin>; 2 ],
+    output: Id<Pin>,
+    op: Box<dyn Fn(Vec<bool>) -> bool>
+}
 
-    //     Gate {
-    //         inputs: [ input1, input2 ],
-    //         output: output,
-    //         op: Box::new(|a, b|{ a && b })
-    //     }
-    // }
+impl Gate {
+    fn new<T: 'static + Fn(Vec<bool>) -> bool>(state: &mut State, func: T) -> Self {
+        let input1 = Pin::create(state);
+        let input2 = Pin::create(state);
+        let output = Pin::create(state);
 
-    fn compute(&mut self, graph: &mut GhostToken<'x>) {
-        let result = (*self.op)(self.inputs[0].borrow(graph).value, self.inputs[1].borrow(graph).value);
+        Gate {
+            inputs: [ input1, input2 ],
+            output,
+            op: Box::new(func)
+        }
+    }
+
+    fn create<T: 'static + Fn(Vec<bool>) -> bool>(state: &mut State, func: T) -> Id<Self> {
+        let this = Self::new(state, func);
+        let id = Id::create(&state.gates, this);
+
+        id
+    }
+
+    fn compute(&mut self) {
+        let inputs: Vec<_> = self.inputs.iter().map(|x|{ x.get().unwrap().value }).collect();
+
+        self.output.get_mut().unwrap().value = (*self.op)(inputs);
     }
 }
 
 fn main() {
+    let mut state = State {
+        pins: Rc::new(RefCell::new(HashMap::new())),
+        edges: Rc::new(RefCell::new(HashMap::new())),
+        gates: Rc::new(RefCell::new(HashMap::new()))
+    };
 
+    let first = Gate::create(&mut state, |x|{ x[0] && x[1] });
+
+    first.get_mut().unwrap().compute();
+
+    /* first.get_mut().unwrap().inputs[0].get_mut().unwrap().value = true;
+    first.get_mut().unwrap().inputs[1].get_mut().unwrap().value = true;
+
+    first.get_mut().unwrap().compute(); */
+
+    println!("{}\n", first.get().unwrap().output.get().unwrap().value);
+
+    return;
+    
 
     let mut window = RenderWindow::new(
         (800, 600),
