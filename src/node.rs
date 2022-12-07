@@ -14,12 +14,12 @@ impl Plugin for NodePlugin {
 }
 
 #[derive(Bundle)]
-pub struct NodeBundle {
+pub struct NodeSpawner {
     node: Node,
     shape: ShapeBundle
 }
 
-impl NodeBundle {
+impl NodeSpawner {
     pub fn new() -> Self {
         Self::from_pos(Vec2::ZERO)
     }
@@ -36,7 +36,7 @@ impl NodeBundle {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Node(pub bool);
 
 fn toggle_node_color(mut commands: Commands, mut query: Query<(&Node, &mut DrawMode), Changed<Node>>) {

@@ -4,7 +4,7 @@ use bevy_prototype_lyon::prelude::*;
 use bevy_prototype_lyon::shapes::Rectangle;
 
 use crate::cursor::Cursor;
-use crate::node::{Node, NodeBundle};
+use crate::node::{Node, NodeSpawner};
 
 pub struct GatePlugin;
 
@@ -27,12 +27,12 @@ impl GateBundle {
     pub fn new(commands: &mut Commands, kind: GateType, size: Vec2) -> Self {
         use GateType::*;
         let inputs = match kind {
-            And | Or | Xor => vec![ NodeBundle::new(), NodeBundle::new() ],
-            Not => vec![ NodeBundle::new() ]
+            And | Or | Xor => vec![ NodeSpawner::new(), NodeSpawner::new() ],
+            Not => vec![ NodeSpawner::new() ]
         };
 
         let inputs = inputs.into_iter().map(|bundle| commands.spawn(bundle).id() ).collect::<Vec<_>>();
-        let output = commands.spawn(NodeBundle::new()).id();
+        let output = commands.spawn(NodeSpawner::new()).id();
 
         Self {
             gate: Gate {

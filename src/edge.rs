@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes::{Line, Circle, Rectangle}, entity::ShapeBundle};
 
-use crate::{node::Node, NODE_COLORS};
+use crate::{node::Node, NODE_COLORS, cursor::Cursor, RADIUS};
 use crate::NodeColors;
 
 pub struct EdgePlugin;
@@ -9,8 +9,10 @@ pub struct EdgePlugin;
 impl Plugin for EdgePlugin {
     fn build(&self, app: &mut App) {
         app
+            .insert_resource(SelectedNode(None))
             .add_system(propagate)
-            .add_system(update_edge_lines);
+            .add_system(update_edge_lines)
+            .add_system(create_edges);
     }
 }
 
@@ -41,20 +43,20 @@ pub struct Edge {
 
 fn propagate(query: Query<&Edge>, mut nodes: Query<&mut Node>) {
     for &Edge { from, to } in query.iter() {
-        let mut a = nodes.get(from).unwrap().0;
+        let a = nodes.get(from).unwrap().clone();
         let mut b = nodes.get_mut(to).unwrap();
 
-        if b.0 != a {
-            b.0 = a;
+        if b.0 != a.0 {
+            b.0 = a.0;
         }
     }
 }
 
 fn update_edge_lines(
-    mut edges: Query<(&Edge, &mut Path, &mut DrawMode)>,
+    mut edges: Query<(&Edge, &mut Path, &mut DrawMode, ChangeTrackers<Edge>)>,
     nodes: Query<(&Node, &Transform, ChangeTrackers<Node>, ChangeTrackers<Transform>)>
 ) {
-    for ( &Edge { from, to }, mut path, mut draw_mode ) in &mut edges {
+    for ( &Edge { from, to }, mut path, mut draw_mode, edge_changed ) in &mut edges {
         let (node, a, node_change, a_change) = nodes.get(from).unwrap();
         let (_, b, _, b_change) = nodes.get(to).unwrap();
 
@@ -64,7 +66,7 @@ fn update_edge_lines(
             }
         }
 
-        if a_change.is_changed() || b_change.is_changed() {
+        if a_change.is_changed() || b_change.is_changed() || edge_changed.is_changed() {
             let line = Line( a.translation.truncate(), b.translation.truncate() );
             *path = ShapePath::build_as(&line);
         }
@@ -72,3 +74,32 @@ fn update_edge_lines(
     }
 }
 
+#[derive(Resource)]
+/// This holds a reference to the first node selected when creating an edge between two nodes
+struct SelectedNode(Option<Entity>);
+
+fn create_edges(mut commands: Commands, nodes: Query<(&Transform, Entity), With<Node>>, mut selected_node: ResMut<SelectedNode>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
+    if mouse_input.just_pressed(MouseButton::Right) {
+        for (transform, entity) in nodes.iter() {
+            if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
+                selected_node.0 = Some(entity);
+                break;
+            }
+        }
+    }
+    else if mouse_input.just_released(MouseButton::Right) {
+        if let Some(selected) = selected_node.0 {
+            for (transform, entity) in nodes.iter() {
+                if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
+                    commands.spawn(EdgeBundle::new(selected, entity));
+                    break;
+                }
+            }
+        }
+        selected_node.0 = None;
+    }
+}
+
+fn delete_edges(mut commands: Commands, edges: Query<(&Transform, Entity)>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
+
+}
