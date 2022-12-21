@@ -8,7 +8,9 @@ pub struct NodePlugin;
 impl Plugin for NodePlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_system(toggle_node_color)
+            .insert_resource(HoveredNode( None ))
+            .add_system(hover_node)
+            .add_system(set_node_color)
             .add_system(toggle_node);
     }
 }
@@ -39,21 +41,37 @@ impl NodeSpawner {
 #[derive(Component, Clone)]
 pub struct Node(pub bool);
 
-fn toggle_node_color(mut commands: Commands, mut query: Query<(&Node, &mut DrawMode), Changed<Node>>) {
-    for (node, mut draw_mode) in &mut query {
-        if let DrawMode::Fill(ref mut fill_mode) = *draw_mode {
+/// This holds a reference to the node that is currently hovered over by the mouse
+#[derive(Resource)]
+pub struct HoveredNode(pub Option<Entity>);
+
+fn hover_node(query: Query<(Entity, &Transform), With<Node>>, mut hovered: ResMut<HoveredNode>, cursor: Res<Cursor>) {
+    for (entity, transform) in query.iter() {
+        if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
+            hovered.0 = Some(entity);
+            return;
+        }
+    }
+    hovered.0 = None;
+}
+
+fn set_node_color(mut commands: Commands, mut query: Query<(Entity, &Node, &mut DrawMode)>, hovered: Res<HoveredNode>) {
+    for (entity, node, mut draw_mode) in &mut query {
+        let DrawMode::Fill(ref mut fill_mode) = *draw_mode else { return };
+        
+        if Some(entity) == hovered.0 {
+            fill_mode.color = NODE_COLORS.highlighted(node.0);
+        }
+        else {
             fill_mode.color = NODE_COLORS.value(node.0);
         }
     }
 }
 
-fn toggle_node(mut query: Query<(&mut Node, &Transform)>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
+fn toggle_node(mut query: Query<&mut Node>, hovered: Res<HoveredNode>, mouse_input: Res<Input<MouseButton>>) {
     if mouse_input.just_pressed(MouseButton::Left) {
-        for (mut node, transform) in &mut query {
-            if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
-                node.0 = !node.0;
-                break;
-            }
-        }
+        let Some(hovered) = hovered.0 else { return };
+        let Ok(mut node) = query.get_mut(hovered) else { return };
+        node.0 = !node.0;
     }
 }

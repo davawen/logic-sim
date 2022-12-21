@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes::{Line, Circle, Rectangle}, entity::ShapeBundle};
 
-use crate::{node::Node, NODE_COLORS, cursor::Cursor, RADIUS};
+use crate::{node::{Node, HoveredNode}, NODE_COLORS, cursor::Cursor, RADIUS};
 use crate::NodeColors;
 
 pub struct EdgePlugin;
@@ -74,32 +74,40 @@ fn update_edge_lines(
     }
 }
 
-#[derive(Resource)]
+/// Holds a reference to the edge the mouse is currently hovering over
+// #[derive(Resource)]
+// struct HoveredEdge(Option<Entity>);
+//
+// fn hover_edge(edges: Query<&Edge>, nodes: Query<&Transform, With<Node>>, mut hovered: ResMut<HoveredEdge>, cursor: Res<Cursor>) {
+//     for &Edge { from, to } in edges.iter() {
+//         let Ok([ from, to ]) = nodes.get_many([from, to]) else { continue };
+//
+//         // get distance from mouse to line
+//         let distance = {
+//
+//             let dist_from_to = from.translation.distance(to.translation);
+//         };
+//     }
+// }
+
 /// This holds a reference to the first node selected when creating an edge between two nodes
+#[derive(Resource)]
 struct SelectedNode(Option<Entity>);
 
-fn create_edges(mut commands: Commands, nodes: Query<(&Transform, Entity), With<Node>>, mut selected_node: ResMut<SelectedNode>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
+fn create_edges(mut commands: Commands, mut selected_node: ResMut<SelectedNode>, hovered: Res<HoveredNode>, mouse_input: Res<Input<MouseButton>>) {
     if mouse_input.just_pressed(MouseButton::Right) {
-        for (transform, entity) in nodes.iter() {
-            if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
-                selected_node.0 = Some(entity);
-                break;
-            }
-        }
+        selected_node.0 = hovered.0;
     }
     else if mouse_input.just_released(MouseButton::Right) {
-        if let Some(selected) = selected_node.0 {
-            for (transform, entity) in nodes.iter() {
-                if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
-                    commands.spawn(EdgeBundle::new(selected, entity));
-                    break;
-                }
-            }
-        }
+        let Some(selected) = selected_node.0 else { return };
+
+        if let Some(hovered) = hovered.0 { 
+            commands.spawn(EdgeBundle::new(selected, hovered));
+        };
         selected_node.0 = None;
     }
 }
 
-fn delete_edges(mut commands: Commands, edges: Query<(&Transform, Entity)>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
+fn delete_edges(mut commands: Commands, edges: Query<(&Transform, Entity), With<Edge>>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
 
 }
