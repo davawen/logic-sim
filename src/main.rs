@@ -29,37 +29,41 @@ impl NodeColors {
     fn value(&self, v: bool) -> Color {
         if v { self.on } else { self.off }
     }
+
+    fn highlighted(&self, v: bool) -> Color {
+        self.value(v) + Color::WHITE*0.1
+    }
 }
 
-fn startup(mut commands: Commands) {
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
     let input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, 50.0))).id();
     let input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -50.0))).id();
 
-    let or_gate = GateBundle::new(&mut commands, GateType::Or, Vec2::splat(120.0)).pos(Vec2::new(-200.0, 100.0));
+    let or_gate = GateBundle::new(&mut commands, &asset_server, GateType::Or, Vec2::splat(120.0)).pos(Vec2::new(-200.0, 100.0));
 
     // commands.spawn(EdgeBundle::new(input1, or_gate.gate.inputs[0]));
     // commands.spawn(EdgeBundle::new(input2, or_gate.gate.inputs[1]));
 
-    let and_gate = GateBundle::new(&mut commands, GateType::And, Vec2::splat(120.0)).pos(Vec2::new(-200.0, -100.0));
+    let and_gate = GateBundle::new(&mut commands, &asset_server, GateType::And, Vec2::splat(120.0)).pos(Vec2::new(-200.0, -100.0));
     
     // commands.spawn(EdgeBundle::new(input1, and_gate.gate.inputs[0]));
     // commands.spawn(EdgeBundle::new(input2, and_gate.gate.inputs[1]));
 
-    let not_gate = GateBundle::new(&mut commands, GateType::Not, Vec2::new(80.0, 40.0)).pos(Vec2::new(0.0, -100.0));
+    let not_gate = GateBundle::new(&mut commands, &asset_server, GateType::Not, Vec2::new(80.0, 40.0)).pos(Vec2::new(0.0, -100.0));
 
     // commands.spawn(EdgeBundle::new(and_gate.gate.output, not_gate.gate.inputs[0]));
 
-    let and_gate2 = GateBundle::new(&mut commands, GateType::And, Vec2::splat(120.0)).pos(Vec2::new(120.0, 0.0));
+    let and_gate2 = GateBundle::new(&mut commands, &asset_server, GateType::And, Vec2::splat(120.0)).pos(Vec2::new(120.0, 0.0));
 
     // commands.spawn(EdgeBundle::new(or_gate.gate.output, and_gate2.gate.inputs[0]));
     // commands.spawn(EdgeBundle::new(not_gate.gate.output, and_gate2.gate.inputs[1]));
 
-    commands.spawn(or_gate);
-    commands.spawn(and_gate);
-    commands.spawn(not_gate);
-    commands.spawn(and_gate2);
+    or_gate.spawn(&mut commands);
+    and_gate.spawn(&mut commands);
+    not_gate.spawn(&mut commands);
+    and_gate2.spawn(&mut commands);
 
     // commands.spawn((
     //     Edge { from: a, to: b},

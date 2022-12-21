@@ -17,14 +17,15 @@ impl Plugin for GatePlugin {
     }
 }
 
-#[derive(Bundle)]
+// #[derive(Bundle)]
 pub struct GateBundle {
     pub gate: Gate,
-    shape: ShapeBundle
+    shape: ShapeBundle,
+    text: Text2dBundle
 }
 
 impl GateBundle {
-    pub fn new(commands: &mut Commands, kind: GateType, size: Vec2) -> Self {
+    pub fn new(commands: &mut Commands, asset_server: &Res<AssetServer>, kind: GateType, size: Vec2) -> Self {
         use GateType::*;
         let inputs = match kind {
             And | Or | Xor => vec![ NodeSpawner::new(), NodeSpawner::new() ],
@@ -33,6 +34,8 @@ impl GateBundle {
 
         let inputs = inputs.into_iter().map(|bundle| commands.spawn(bundle).id() ).collect::<Vec<_>>();
         let output = commands.spawn(NodeSpawner::new()).id();
+
+        let kind_name = kind.as_str();
 
         Self {
             gate: Gate {
@@ -45,7 +48,15 @@ impl GateBundle {
                 &Rectangle { origin: RectangleOrigin::Center, extents: size },
                 DrawMode::Fill(FillMode::color(Color::PURPLE)),
                 Transform::IDENTITY
-            )
+            ),
+            text: Text2dBundle {
+                text: Text::from_section(
+                    kind_name,
+                    TextStyle { font: asset_server.load("FiraCode.ttf"), font_size: 32.0, color: Color::WHITE },
+                ).with_alignment(TextAlignment { horizontal: HorizontalAlign::Center, vertical: VerticalAlign::Center }),
+                transform: Transform::from_xyz(0.0, 0.0, 10.0),
+                ..Default::default()
+            }
         }
     }
 
@@ -53,6 +64,16 @@ impl GateBundle {
         self.shape.transform.translation = pos.extend(0.0);
 
         self
+    }
+
+    pub fn spawn<'w, 's, 'a>(self, commands: &'a mut Commands<'w, 's>) -> bevy::ecs::system::EntityCommands<'w, 's, 'a> {
+        let mut bund = commands.spawn(( self.gate, self.shape ));
+
+        bund.with_children(|mut b| {
+            b.spawn(self.text);
+        });
+
+        bund
     }
 }
 
@@ -70,6 +91,18 @@ pub enum GateType {
     Or,
     Xor,
     Not
+}
+
+impl GateType {
+    fn as_str(&self) -> &'static str {
+        use GateType::*;
+        match self {
+            And => "And",
+            Or => "Or",
+            Xor => "Xor",
+            Not => "Not"
+        }
+    }
 }
 
 fn move_gate(mut query: Query<(&mut Transform, &Gate)>, cursor: Res<Cursor>, mouse_input: Res<Input<MouseButton>>) {
