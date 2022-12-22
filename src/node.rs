@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes::{Line, Circle, Rectangle}, entity::ShapeBundle};
-use crate::{cursor::Cursor, NODE_COLORS};
-use crate::{ RADIUS, NodeColors };
+use crate::{cursor::Cursor, constants::{Depth, Colors, RADIUS}};
 
 pub struct NodePlugin;
 
@@ -32,7 +31,7 @@ impl NodeSpawner {
             shape: GeometryBuilder::build_as(
                 &Circle { center: Vec2::ZERO, radius: RADIUS },
                 DrawMode::Fill(FillMode::color(Color::BLACK)), // will be set to NodeColors.off automatically
-                Transform::from_translation(pos.extend(1.0))
+                Transform::from_translation(pos.extend(Depth::NODE))
             )
         }
     }
@@ -55,15 +54,15 @@ fn hover_node(query: Query<(Entity, &Transform), With<Node>>, mut hovered: ResMu
     hovered.0 = None;
 }
 
-fn set_node_color(mut commands: Commands, mut query: Query<(Entity, &Node, &mut DrawMode)>, hovered: Res<HoveredNode>) {
+fn set_node_color(mut query: Query<(Entity, &Node, &mut DrawMode)>, hovered: Res<HoveredNode>) {
     for (entity, node, mut draw_mode) in &mut query {
         let DrawMode::Fill(ref mut fill_mode) = *draw_mode else { return };
         
         if Some(entity) == hovered.0 {
-            fill_mode.color = NODE_COLORS.highlighted(node.0);
+            fill_mode.color = Colors::highlighted(node.0);
         }
         else {
-            fill_mode.color = NODE_COLORS.value(node.0);
+            fill_mode.color = Colors::value(node.0);
         }
     }
 }
