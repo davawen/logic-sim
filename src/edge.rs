@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_prototype_lyon::{
     entity::ShapeBundle,
@@ -30,10 +32,14 @@ impl Plugin for EdgePlugin {
 pub struct EdgeBundle {
     pub edge: Edge,
     shape: ShapeBundle,
+    timer: EdgeTimer
 }
 
 impl EdgeBundle {
     pub fn new(a: Entity, b: Entity) -> Self {
+        let mut timer = EdgeTimer(Timer::from_seconds(0.1, TimerMode::Once));
+        timer.0.set_elapsed(Duration::from_millis(100));
+
         Self {
             edge: Edge { from: a, to: b },
             shape: GeometryBuilder::build_as(
@@ -41,6 +47,7 @@ impl EdgeBundle {
                 DrawMode::Stroke(StrokeMode::new(Colors::OFF, 5.0)),
                 Transform::from_xyz(0.0, 0.0, Depth::EDGE),
             ),
+            timer
         }
     }
 }
@@ -51,12 +58,23 @@ pub struct Edge {
     pub to: Entity,
 }
 
-fn propagate(query: Query<&Edge>, mut nodes: Query<&mut Node>) {
-    for &Edge { from, to } in query.iter() {
+/// Determines how much a signal progressed through an edge
+#[derive(Component)]
+pub struct EdgeTimer(pub Timer);
+
+fn propagate(mut query: Query<(&Edge, &mut EdgeTimer)>, mut nodes: Query<&mut Node>, time: Res<Time>) {
+    for ( &Edge { from, to }, mut timer ) in &mut query {
         let a = nodes.get(from).unwrap().clone();
         let mut b = nodes.get_mut(to).unwrap();
 
-        if b.0 != a.0 {
+        if timer.0.finished() && b.0 != a.0 {
+            timer.0.reset();
+        }
+        else if !timer.0.finished() {
+            timer.0.tick(time.delta());
+        }
+
+        if timer.0.just_finished() {
             b.0 = a.0;
         }
     }
@@ -119,20 +137,23 @@ fn move_edge(
 }
 
 fn set_edge_color(
-    mut edges: Query<(Entity, &Edge, &mut DrawMode)>,
+    mut edges: Query<(Entity, &Edge, &EdgeTimer, &mut DrawMode)>,
     nodes: Query<&Node>,
     hovered: Res<HoveredEdge>,
 ) {
-    for (edge, &Edge { from, to }, mut draw_mode) in &mut edges {
+    for (edge, &Edge { from, to }, timer, mut draw_mode) in &mut edges {
         let Ok([ from, to]) = nodes.get_many([from, to]) else { return };
 
         let DrawMode::Stroke(ref mut stroke_mode) = *draw_mode else { return };
 
-        if Some(edge) == hovered.0 {
-            stroke_mode.color = Colors::highlighted(from.0);
+        let func = if Some(edge) == hovered.0 {
+            Colors::highlighted
         } else {
-            stroke_mode.color = Colors::value(from.0);
-        }
+            Colors::value
+        };
+
+        // Linear interpolation based on timer
+        stroke_mode.color = func(!from.0) * timer.0.percent_left() + func(from.0) * timer.0.percent();
     }
 }
 

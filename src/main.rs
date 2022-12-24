@@ -17,7 +17,6 @@ use node::{Node, NodePlugin, NodeSpawner};
 use edge::{Edge, EdgePlugin, EdgeBundle};
 use ui::UiBuilder;
 
-
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
