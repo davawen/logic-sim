@@ -1,7 +1,7 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
-    constants::{Colors, Depth},
+    constants::Colors,
     gate::{GateType, MovingGate, GateBundle}, cursor::Cursor,
 };
 

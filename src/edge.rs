@@ -4,13 +4,13 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::{
     entity::ShapeBundle,
     prelude::*,
-    shapes::{Circle, Line, Rectangle},
+    shapes::Line,
 };
 
 use crate::{
     cursor::Cursor,
     node::{HoveredNode, Node},
-    constants::{Colors, RADIUS, Depth}
+    constants::{Colors, Depth}
 };
 
 pub struct EdgePlugin;

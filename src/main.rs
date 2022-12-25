@@ -5,23 +5,23 @@ mod edge;
 mod gate;
 mod ui;
 
-use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Material2d, Mesh2dHandle}, input::mouse::MouseButtonInput, math::Vec3Swizzles, render::mesh::VertexAttributeValues};
-use bevy_prototype_lyon::{prelude::*, shapes::{Line, Circle, Rectangle}};
+use bevy::prelude::*;
+use bevy_prototype_lyon::prelude::*;
 use constants::Colors;
-use cursor::{Cursor, CursorPlugin};
+use cursor::CursorPlugin;
 
-use gate::{ GateBundle, GateType, GatePlugin };
-use node::{Node, NodePlugin, NodeSpawner};
-use edge::{Edge, EdgePlugin, EdgeBundle};
+use gate::GatePlugin;
+use node::{NodePlugin, NodeSpawner};
+use edge::EdgePlugin;
 use ui::UiBuilder;
 
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn startup(mut commands: Commands, _asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
-    let input3 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  80.0))).id();
-    let input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  40.0))).id();
-    let input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -40.0))).id();
-    let input4 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -80.0))).id();
+    let _input3 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  80.0))).id();
+    let _input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  40.0))).id();
+    let _input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -40.0))).id();
+    let _input4 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -80.0))).id();
 }
 
 fn main() {

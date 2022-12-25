@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_prototype_lyon::{prelude::*, shapes::{Line, Circle, Rectangle}, entity::ShapeBundle};
+use bevy_prototype_lyon::{prelude::*, shapes::Circle, entity::ShapeBundle};
 use crate::{cursor::Cursor, constants::{Depth, Colors, RADIUS}};
 
 pub struct NodePlugin;
