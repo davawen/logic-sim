@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod constants;
 mod cursor;
 mod node;
@@ -20,8 +18,10 @@ use ui::UiBuilder;
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
 
-    let input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, 50.0))).id();
-    let input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -50.0))).id();
+    let input3 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  80.0))).id();
+    let input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  40.0))).id();
+    let input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -40.0))).id();
+    let input4 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -80.0))).id();
 }
 
 fn main() {

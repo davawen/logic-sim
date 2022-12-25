@@ -86,7 +86,7 @@ struct HoveredEdge(Option<Entity>);
 
 fn hover_edge(
     edges: Query<(Entity, &Edge)>,
-    nodes: Query<&Transform, With<Node>>,
+    nodes: Query<&GlobalTransform, With<Node>>,
     mut hovered: ResMut<HoveredEdge>,
     hovered_node: Res<HoveredNode>,
     cursor: Res<Cursor>,
@@ -96,8 +96,8 @@ fn hover_edge(
         for (edge, &Edge { from, to }) in edges.iter() {
             let Ok([ a, b ]) = nodes.get_many([from, to]) else { continue };
 
-            let a = a.translation;
-            let b = b.translation;
+            let a = a.translation();
+            let b = b.translation();
             let p = cursor.0;
 
             // get distance from mouse to line
@@ -124,13 +124,13 @@ fn hover_edge(
 
 fn move_edge(
     mut edges: Query<(&Edge, &mut Path, ChangeTrackers<Edge>)>,
-    nodes: Query<(&Transform, ChangeTrackers<Transform>), With<Node>>,
+    nodes: Query<(&GlobalTransform, ChangeTrackers<GlobalTransform>), With<Node>>,
 ) {
     for (&Edge { from, to }, mut path, edge_change) in &mut edges {
         let Ok([( a, a_change ), (b, b_change)]) = nodes.get_many([from, to]) else { return };
 
         if a_change.is_changed() || b_change.is_changed() || edge_change.is_changed() {
-            let line = Line(a.translation.truncate(), b.translation.truncate());
+            let line = Line(a.translation().truncate(), b.translation().truncate());
             *path = ShapePath::build_as(&line);
         }
     }
@@ -181,7 +181,6 @@ fn create_edges(
 
 fn delete_edges(
     mut commands: Commands,
-    edges: Query<(&Transform, Entity), With<Edge>>,
     mouse_input: Res<Input<MouseButton>>,
     hovered_edge: Res<HoveredEdge>,
 ) {

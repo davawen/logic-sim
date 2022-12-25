@@ -44,9 +44,9 @@ pub struct Node(pub bool);
 #[derive(Resource)]
 pub struct HoveredNode(pub Option<Entity>);
 
-fn hover_node(query: Query<(Entity, &Transform), With<Node>>, mut hovered: ResMut<HoveredNode>, cursor: Res<Cursor>) {
+fn hover_node(query: Query<(Entity, &GlobalTransform), With<Node>>, mut hovered: ResMut<HoveredNode>, cursor: Res<Cursor>) {
     for (entity, transform) in query.iter() {
-        if cursor.0.distance_squared(transform.translation.truncate()) < RADIUS*RADIUS {
+        if cursor.0.distance_squared(transform.translation().truncate()) < RADIUS*RADIUS {
             hovered.0 = Some(entity);
             return;
         }

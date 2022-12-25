@@ -96,7 +96,7 @@ fn interact_gate_ui(
             Interaction::Clicked => {
                 *color = Colors::ON.into();
 
-                let gate = GateBundle::new(&mut commands, &asset_server, (*kind).clone(), Vec2::splat(120.0))
+                let gate = GateBundle::new(&asset_server, (*kind).clone(), Vec2::splat(120.0))
                     .pos(cursor.0);
                 let gate = gate.spawn(&mut commands).id();
 

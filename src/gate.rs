@@ -13,46 +13,26 @@ impl Plugin for GatePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(MovingGate(None))
             .add_system(move_gate)
-            .add_system(move_gate_nodes)
+            // .add_system(move_gate_nodes)
             .add_system(process_gates);
     }
 }
 
 // #[derive(Bundle)]
 pub struct GateBundle {
-    pub gate: Gate,
+    pub size: Vec2,
+    pub kind: GateType,
     shape: ShapeBundle,
     text: Text2dBundle,
 }
 
 impl GateBundle {
-    pub fn new(
-        commands: &mut Commands,
-        asset_server: &Res<AssetServer>,
-        kind: GateType,
-        size: Vec2,
-    ) -> Self {
-        use GateType::*;
-        let inputs = match kind {
-            And | Or | Xor => vec![NodeSpawner::new(), NodeSpawner::new()],
-            Not => vec![NodeSpawner::new()],
-        };
-
-        let inputs = inputs
-            .into_iter()
-            .map(|bundle| commands.spawn(bundle).id())
-            .collect::<Vec<_>>();
-        let output = commands.spawn(NodeSpawner::new()).id();
-
+    pub fn new(asset_server: &Res<AssetServer>, kind: GateType, size: Vec2) -> Self {
         let kind_name = kind.as_str();
 
         Self {
-            gate: Gate {
-                inputs,
-                output,
-                size,
-                kind,
-            },
+            size,
+            kind,
             shape: GeometryBuilder::build_as(
                 &Rectangle {
                     origin: RectangleOrigin::Center,
@@ -90,11 +70,38 @@ impl GateBundle {
         self,
         commands: &'a mut Commands<'w, 's>,
     ) -> bevy::ecs::system::EntityCommands<'w, 's, 'a> {
-        let mut bund = commands.spawn((self.gate, self.shape));
+        let num_inputs = self.kind.num_inputs();
+        let inputs = (0..self.kind.num_inputs())
+            .rev()
+            .map(|idx| {
+                let node = NodeSpawner::from_pos(Vec2::new(
+                    -self.size.x / 2.0,
+                    (idx as f32 + 1.0) / (num_inputs as f32 + 1.0) * self.size.y
+                        - self.size.y / 2.0,
+                ));
+                commands.spawn(node).id()
+            })
+            .collect::<Vec<_>>();
 
-        bund.with_children(|mut b| {
-            b.spawn(self.text);
-        });
+        let output = commands
+            .spawn(NodeSpawner::from_pos(Vec2::new(self.size.x / 2.0, 0.0)))
+            .id();
+
+        let mut bund = commands.spawn((
+            Gate {
+                inputs: inputs.clone(),
+                output,
+                kind: self.kind,
+                size: self.size,
+            },
+            self.shape,
+        ));
+
+        bund.push_children(&inputs)
+            .add_child(output)
+            .with_children(|b| {
+                b.spawn(self.text);
+            });
 
         bund
     }
@@ -126,11 +133,23 @@ impl GateType {
             Not => "Not",
         }
     }
+
+    pub fn num_inputs(&self) -> usize {
+        use GateType::*;
+        match self {
+            And | Or | Xor => 2,
+            Not => 1,
+        }
+    }
 }
 
 /// Holds a reference to the currently moving gate, as well as the offset it was selected at
 #[derive(Resource)]
 pub struct MovingGate(pub Option<(Entity, Vec2)>);
+
+fn snap_vec(v: Vec2, grid_size: Vec2) -> Vec2 {
+    (v / grid_size).round() * grid_size
+}
 
 fn move_gate(
     mut query: Query<(Entity, &mut Transform, &Gate)>,
@@ -155,32 +174,9 @@ fn move_gate(
 
     if let Some((entity, offset)) = selected.0 {
         let Ok(( _, mut transform, _ )) = query.get_mut(entity) else { return };
-        *transform = transform.with_translation((cursor.0 + offset).extend(Depth::GATE));
-    }
-}
-
-fn move_gate_nodes(
-    query: Query<(&Transform, &Gate), Changed<Transform>>,
-    mut nodes: Query<&mut Transform, (With<Node>, Without<Gate>)>,
-) {
-    for (transform, gate) in query.iter() {
-        let mut idx = gate.inputs.len();
-        let mut iter = nodes.iter_many_mut(&gate.inputs);
-        while let Some(mut input_transform) = iter.fetch_next() {
-            idx -= 1;
-            let offset = Vec2::new(
-                -gate.size.x / 2.0,
-                (idx as f32 + 1.0) / (gate.inputs.len() as f32 + 1.0) * gate.size.y
-                    - gate.size.y / 2.0,
-            );
-            input_transform.translation =
-                (transform.translation.truncate() + offset).extend(Depth::NODE)
-        }
-
-        let mut output_transform = nodes.get_mut(gate.output).unwrap();
-        output_transform.translation = (transform.translation.truncate()
-            + Vec2::new(gate.size.x / 2.0, 0.0))
-        .extend(Depth::NODE);
+        *transform = transform.with_translation(
+            snap_vec(cursor.0 + offset, Vec2::new(20.0, 20.0)).extend(Depth::GATE),
+        );
     }
 }
 
