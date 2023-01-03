@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::query::QueryEntityError};
 use bevy_prototype_lyon::{
     entity::ShapeBundle,
     prelude::*,
@@ -24,7 +24,8 @@ impl Plugin for EdgePlugin {
             .add_system(set_edge_color)
             .add_system(hover_edge)
             .add_system(create_edges)
-            .add_system(delete_edges);
+            .add_system(delete_edges)
+            .add_system(cleanup_edges);
     }
 }
 
@@ -64,8 +65,7 @@ pub struct EdgeTimer(pub Timer);
 
 fn propagate(mut query: Query<(&Edge, &mut EdgeTimer)>, mut nodes: Query<&mut Node>, time: Res<Time>) {
     for ( &Edge { from, to }, mut timer ) in &mut query {
-        let a = nodes.get(from).unwrap().clone();
-        let mut b = nodes.get_mut(to).unwrap();
+        let Ok([a, mut b]) = nodes.get_many_mut([ from, to ]) else { continue };
 
         if timer.0.finished() && b.0 != a.0 {
             timer.0.reset();
@@ -188,5 +188,18 @@ fn delete_edges(
         let Some(hovered) = hovered_edge.0 else { return };
 
         commands.entity(hovered).despawn();
+    }
+}
+
+/// Remove edges whose nodes have been deleted
+fn cleanup_edges(
+    mut commands: Commands,
+    edges: Query<(Entity, &Edge)>,
+    nodes: Query<(), With<Node>>
+) {
+    for (entity, &Edge { from, to }) in edges.iter() {
+        if let Err(QueryEntityError::NoSuchEntity(_)) = nodes.get_many([from, to]) {
+            commands.get_entity(entity).unwrap().despawn();
+        }
     }
 }

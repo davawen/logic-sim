@@ -17,11 +17,6 @@ use ui::UiBuilder;
 
 fn startup(mut commands: Commands, _asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
-
-    let _input3 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  80.0))).id();
-    let _input1 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0,  40.0))).id();
-    let _input2 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -40.0))).id();
-    let _input4 = commands.spawn(NodeSpawner::from_pos(Vec2::new(-500.0, -80.0))).id();
 }
 
 fn main() {
