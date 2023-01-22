@@ -39,7 +39,9 @@ pub struct EdgeBundle {
 impl EdgeBundle {
     pub fn new(a: Entity, b: Entity) -> Self {
         let mut timer = EdgeTimer(Timer::from_seconds(0.1, TimerMode::Once));
-        timer.0.set_elapsed(Duration::from_millis(100));
+        timer.0.set_elapsed(timer.0.duration());
+
+        // GeometryBuilder::build_as(Path, mode, transform)
 
         Self {
             edge: Edge { from: a, to: b },
@@ -72,6 +74,10 @@ fn propagate(mut query: Query<(&Edge, &mut EdgeTimer)>, mut nodes: Query<&mut No
         }
         else if !timer.0.finished() {
             timer.0.tick(time.delta());
+            if b.0 == a.0 {
+                let d = timer.0.duration();
+                timer.0.set_elapsed(d);
+            }
         }
 
         if timer.0.just_finished() {
@@ -96,14 +102,19 @@ fn hover_edge(
         for (edge, &Edge { from, to }) in edges.iter() {
             let Ok([ a, b ]) = nodes.get_many([from, to]) else { continue };
 
-            let a = a.translation();
-            let b = b.translation();
+            let a = a.translation().truncate();
+            let b = b.translation().truncate();
             let p = cursor.0;
+
+            // Checks that the cursor is between the two points (line distance calculation doesn't take into account the fact it's a segment)
+            if (a - p).dot(b - p) > 0.0 {
+                continue;
+            }
 
             // get distance from mouse to line
             let distance = {
-                let dist_p_a = p.distance(a.truncate());
-                let dist_p_b = p.distance(b.truncate());
+                let dist_p_a = p.distance(a);
+                let dist_p_b = p.distance(b);
 
                 let dist_a_b = a.distance(b);
                 let dist_to_line =
@@ -112,8 +123,8 @@ fn hover_edge(
                 dist_to_line.min(dist_p_a).min(dist_p_b)
             };
 
+            // width of edge
             if distance < 5.0 {
-                // width of edge
                 hovered.0 = Some(edge);
                 return;
             }
